@@ -104,62 +104,60 @@ exports.deleteProject = async (req, res) => {
   session.startTransaction();
 
   try {
-      const project = await Project.findById(req.params.id).session(session);
-      if (!project) {
-          await session.abortTransaction();
-          session.endSession();
-          return res.status(404).json({ message: 'Project not found' });
-      }
-      
-      if (project.user.toString() !== req.user.userId) {
-          await session.abortTransaction();
-          session.endSession();
-          return res.status(401).json({ message: 'Not authorized' });
-      }
-
-      // Delete associated notes
-      await Note.deleteMany({ _id: { $in: project.notes } }).session(session);
-
-      // Delete associated files
-      const files = await File.find({ _id: { $in: project.files } }).session(session);
-
-      // Delete files from S3
-      if (files.length > 0) {
-          const s3Client = new S3Client({
-              region: process.env.AWS_REGION,
-              credentials: {
-                  accessKeyId: process.env.AWS_ACCESS_KEY,
-                  secretAccessKey: process.env.AWS_SECRET_KEY,
-              },
-          });
-
-          const deleteCommand = new DeleteObjectsCommand({
-              Bucket: process.env.BUCKET_NAME,
-              Delete: {
-                  Objects: files.map(file => ({ Key: file.s3_key })),
-              },
-          });
-
-          await s3Client.send(deleteCommand);
-      }
-
-      // Delete file records from database
-      await File.deleteMany({ _id: { $in: project.files } }).session(session);
-
-      // Delete the project
-      await Project.findByIdAndDelete(req.params.id).session(session);
-
-      // Commit the transaction
-      await session.commitTransaction();
-      session.endSession();
-
-      res.json({ message: 'Project and associated data deleted successfully' });
-  } catch (err) {
-      // If an error occurred, abort the transaction
+    const project = await Project.findById(req.params.id).session(session);
+    if (!project) {
       await session.abortTransaction();
       session.endSession();
+      return res.status(404).json({ message: 'Project not found' });
+    }
 
-      console.error('Error in deleteProject:', err);
-      res.status(500).json({ message: 'Server error' });
+    if (project.user.toString() !== req.user.userId) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    // Delete associated notes
+    await Note.deleteMany({ _id: { $in: project.notes } }).session(session);
+
+    // Delete associated files
+    const files = await File.find({ _id: { $in: project.files } }).session(session);
+
+    // Delete files from S3
+    if (files.length > 0) {
+      const s3Client = new S3Client({
+        region: process.env.AWS_REGION,
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY,
+          secretAccessKey: process.env.AWS_SECRET_KEY,
+        },
+      });
+
+      const deleteCommand = new DeleteObjectsCommand({
+        Bucket: process.env.BUCKET_NAME,
+        Delete: {
+          Objects: files.map(file => ({ Key: file.s3_key })),
+        },
+      });
+
+      await s3Client.send(deleteCommand);
+    }
+
+    // Delete file records from database
+    await File.deleteMany({ _id: { $in: project.files } }).session(session);
+
+    // Delete the project
+    await Project.findByIdAndDelete(req.params.id).session(session);
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    res.json({ message: 'Project and associated data deleted successfully' });
+  } catch (err) {
+    // If an error occurred, abort the transaction
+    await session.abortTransaction();
+    session.endSession();
+    res.status(500).json({ message: 'Server error' });
   }
 };

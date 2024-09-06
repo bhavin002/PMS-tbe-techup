@@ -101,19 +101,6 @@ exports.createFiles = async (req, res) => {
     }
 };
 
-
-// Get Files by Project ID
-
-exports.getFilesByProjectId = async (req, res) => {
-    const { projectId } = req.params;
-    try {
-        const files = await File.find({ project: projectId });
-        res.json(files);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
 // Get Presigned URL for File Download and preview
 
 exports.getPresignedUrl = async (req, res) => {

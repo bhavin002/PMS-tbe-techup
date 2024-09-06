@@ -39,18 +39,6 @@ exports.createNote = async (req, res) => {
     }
 };
 
-
-// Get All Notes for a Project
-
-exports.getNotesByProjectId = async (req, res) => {
-    try {
-        const notes = await Note.find({ project: req.params.projectId });
-        res.json(notes);
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
 // Update Note
 
 exports.updateNote = async (req, res) => {
